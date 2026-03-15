@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "alarmmanager",
-		"version": "0.0.1",
+		"version": "0.0.2",
 		"news": {
 			"0.0.1": {
 				"en": "initial release",
@@ -16,7 +16,7 @@
 			"en": "Pager alarm system via e*Message API with escalation, acknowledgements and state-based triggers",
 			"de": "Pager-Alarmsystem über e*Message API mit Eskalation, Bestätigungen und zustandsbasierten Auslösern"
 		},
-		"authors": ["TobiasP <app.tobias.purk@gmail.com>"],
+		"authors": ["TobiasP <app@gmail.com>"],
 		"keywords": [
 			"alarm",
 			"pager",
