@@ -1,5 +1,20 @@
 {
-	"alarmmanager adapter settings": "Adapter settings for alarmmanager",
-	"option1": "option1",
-	"option2": "option2"
+	"eMessage API": "e*Message API",
+	"Configure access to the e*Message API and general adapter behavior.": "Configure access to the e*Message API and general adapter behavior.",
+	"API User ID": "API User ID",
+	"API Password": "API Password",
+	"Sender Address": "Sender Address",
+	"Telegram Instance": "Telegram Instance",
+	"Polling interval (seconds)": "Polling interval (seconds)",
+	"Queue delay (seconds)": "Queue delay (seconds)",
+	"Default response timeout (seconds)": "Default response timeout (seconds)",
+	"Test Recipient": "Test Recipient",
+	"These settings are used for the first login and send tests.": "These settings are used for the first login and send tests.",
+	"Service": "Service",
+	"Recipient Identifier": "Recipient Identifier",
+	"Next step": "Next step",
+	"In the next version this page will be extended with pager list, aliases, escalation levels and response code mapping.": "In the next version this page will be extended with pager list, aliases, escalation levels and response code mapping.",
+	"2wayS": "2wayS",
+	"eCityruf": "eCityruf",
+	"eBos": "eBos"
 }
