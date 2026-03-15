@@ -1,0 +1,98 @@
+{
+	"common": {
+		"name": "alarmmanager",
+		"version": "0.0.1",
+		"news": {
+			"0.0.1": {
+				"en": "initial release",
+				"de": "Erstveröffentlichung"
+			}
+		},
+		"titleLang": {
+			"en": "AlarmManager",
+			"de": "AlarmManager"
+		},
+		"desc": {
+			"en": "Pager alarm system via e*Message API with escalation, acknowledgements and state-based triggers",
+			"de": "Pager-Alarmsystem über e*Message API mit Eskalation, Bestätigungen und zustandsbasierten Auslösern"
+		},
+		"authors": ["TobiasP <app.tobias.purk@gmail.com>"],
+		"keywords": [
+			"alarm",
+			"pager",
+			"emessage",
+			"alert",
+			"notification",
+			"escalation",
+			"iobroker",
+			"ecityruf",
+			"2ways",
+			"ebos"
+		],
+		"licenseInformation": {
+			"type": "free",
+			"license": "MIT"
+		},
+		"platform": "Javascript/Node.js",
+		"icon": "alarmmanager.png",
+		"enabled": true,
+		"extIcon": "https://raw.githubusercontent.com/t0Puk/ioBroker.alarmmanager/main/admin/alarmmanager.png",
+		"readme": "https://github.com/t0Puk/ioBroker.alarmmanager/blob/main/README.md",
+		"loglevel": "info",
+		"tier": 3,
+		"mode": "daemon",
+		"type": "alarm",
+		"compact": true,
+		"connectionType": "cloud",
+		"dataSource": "poll",
+		"adminUI": {
+			"config": "materialize"
+		},
+		"eraseOnUpload": true,
+		"dependencies": [
+			{
+				"js-controller": ">=6.0.11"
+			}
+		],
+		"globalDependencies": [
+			{
+				"admin": ">=7.0.23"
+			}
+		]
+	},
+	"native": {
+		"apiUserId": "",
+		"apiPassword": "",
+		"senderAddress": "",
+		"pollIntervalSec": 30,
+		"queueDelaySec": 10,
+		"defaultResponseTimeoutSec": 120,
+		"telegramInstance": "",
+		"testRecipientService": "2wayS",
+		"testRecipientIdentifier": ""
+	},
+	"objects": [],
+	"instanceObjects": [
+		{
+			"_id": "info",
+			"type": "channel",
+			"common": {
+				"name": "Information"
+			},
+			"native": {}
+		},
+		{
+			"_id": "info.connection",
+			"type": "state",
+			"common": {
+				"role": "indicator.connected",
+				"name": "Device or service connected",
+				"type": "boolean",
+				"read": true,
+				"write": false,
+				"def": false
+			},
+			"native": {}
+		}
+	]
+}
