@@ -45,9 +45,6 @@
 		"compact": true,
 		"connectionType": "cloud",
 		"dataSource": "poll",
-		"adminUI": {
-			"config": "json"
-		},
 		"eraseOnUpload": true,
 		"dependencies": [
 			{
