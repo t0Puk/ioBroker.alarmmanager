@@ -21,9 +21,9 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
   mod
 ));
-var import_adapter_core = __toESM(require("@iobroker/adapter-core"));
+var utils = __toESM(require("@iobroker/adapter-core"));
 var import_emessageClient = require("./lib/emessageClient");
-class Alarmmanager extends import_adapter_core.default.Adapter {
+class Alarmmanager extends utils.Adapter {
   pollTimer;
   emessageClient;
   constructor(options = {}) {
