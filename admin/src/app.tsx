@@ -1,53 +1,54 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
 import React from 'react';
-import { type Theme, type StyleRules, withStyles } from '@material-ui/core/styles';
-import GenericApp from '@iobroker/adapter-react/GenericApp';
-import Settings from './components/settings';
-import type { GenericAppProps, GenericAppSettings } from '@iobroker/adapter-react/types';
 
-const styles = (_theme: Theme): StyleRules => ({
-	root: {},
-});
+export default function App(): React.JSX.Element {
+	return (
+		<div
+			style={{
+				background: '#ffffff',
+				color: '#000000',
+				margin: 20,
+				padding: 24,
+				borderRadius: 8,
+				fontFamily: 'Arial, sans-serif',
+			}}
+		>
+			<h1 style={{ marginTop: 0 }}>AlarmManager</h1>
+			<div
+				style={{
+					background: '#00c853',
+					color: '#000',
+					padding: 12,
+					fontWeight: 'bold',
+					marginBottom: 20,
+				}}
+			>
+				MINIMAL REACT UI GELADEN
+			</div>
 
-class App extends GenericApp {
-	constructor(props: GenericAppProps) {
-		const extendedProps: GenericAppSettings = {
-			...props,
-			encryptedFields: ['apiPassword'],
-			translations: {
-				en: require('./i18n/en.json'),
-				de: require('./i18n/de.json'),
-				ru: require('./i18n/ru.json'),
-				pt: require('./i18n/pt.json'),
-				nl: require('./i18n/nl.json'),
-				fr: require('./i18n/fr.json'),
-				it: require('./i18n/it.json'),
-				es: require('./i18n/es.json'),
-				pl: require('./i18n/pl.json'),
-				uk: require('./i18n/uk.json'),
-				'zh-cn': require('./i18n/zh-cn.json'),
-			},
-		};
-		super(props, extendedProps);
-	}
+			<div style={{ display: 'grid', gap: 12, maxWidth: 500 }}>
+				<label>
+					<div>API User ID</div>
+					<input style={{ width: '100%', padding: 8 }} />
+				</label>
 
-	render(): React.JSX.Element {
-		if (!this.state.loaded) {
-			return super.render();
-		}
+				<label>
+					<div>API Password</div>
+					<input
+						type="password"
+						style={{ width: '100%', padding: 8 }}
+					/>
+				</label>
 
-		return (
-			<>
-				<Settings
-					native={this.state.native}
-					onChange={(attr, value) => this.updateNativeValue(attr, value)}
-				/>
-				{this.renderError()}
-				{this.renderToast()}
-				{this.renderSaveCloseButtons()}
-			</>
-		);
-	}
+				<label>
+					<div>Sender Address</div>
+					<input style={{ width: '100%', padding: 8 }} />
+				</label>
+
+				<label>
+					<div>Telegram Instance</div>
+					<input style={{ width: '100%', padding: 8 }} />
+				</label>
+			</div>
+		</div>
+	);
 }
-
-export default withStyles(styles)(App);
