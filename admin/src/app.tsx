@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 import React from 'react';
 import { type Theme, type StyleRules, withStyles } from '@material-ui/core/styles';
-
 import GenericApp from '@iobroker/adapter-react/GenericApp';
 import Settings from './components/settings';
 import type { GenericAppProps, GenericAppSettings } from '@iobroker/adapter-react/types';
@@ -30,10 +29,6 @@ class App extends GenericApp {
 			},
 		};
 		super(props, extendedProps);
-	}
-
-	onConnectionReady(): void {
-		// executed when connection is ready
 	}
 
 	render(): React.JSX.Element {
