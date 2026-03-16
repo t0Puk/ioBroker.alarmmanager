@@ -1,11 +1,15 @@
 {
 	"common": {
 		"name": "alarmmanager",
-		"version": "0.0.2",
+		"version": "0.0.3",
 		"news": {
 			"0.0.1": {
 				"en": "initial release",
 				"de": "Erstveröffentlichung"
+			},
+			"0.0.3": {
+				"en": "Fix admin UI loading",
+				"de": "Admin-Oberfläche korrigiert"
 			}
 		},
 		"titleLang": {
@@ -45,6 +49,9 @@
 		"compact": true,
 		"connectionType": "cloud",
 		"dataSource": "poll",
+		"adminUI": {
+			"config": "html"
+		},
 		"eraseOnUpload": true,
 		"dependencies": [
 			{
