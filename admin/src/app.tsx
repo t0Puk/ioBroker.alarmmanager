@@ -1,7 +1,5 @@
-import React, { useEffect, useState } from 'react';
-
-declare const window: any;
-declare const io: any;
+import React, { useEffect, useMemo, useState } from 'react';
+import Connection from '@iobroker/adapter-react/Connection';
 
 type Config = {
 	apiUserId: string;
@@ -27,102 +25,33 @@ const DEFAULT_CONFIG: Config = {
 	testRecipientIdentifier: '',
 };
 
-let socketInstance: any = null;
-
-function getSocket(): any {
-	if (socketInstance && typeof socketInstance.emit === 'function') {
-		return socketInstance;
-	}
-
-	if (window.socket && typeof window.socket.emit === 'function') {
-		socketInstance = window.socket;
-		return socketInstance;
-	}
-
-	if (window.parent?.socket && typeof window.parent.socket.emit === 'function') {
-		socketInstance = window.parent.socket;
-		return socketInstance;
-	}
-
-	if (window.top?.socket && typeof window.top.socket.emit === 'function') {
-		socketInstance = window.top.socket;
-		return socketInstance;
-	}
-
-	if (typeof io !== 'undefined') {
-		socketInstance = io.connect('/', {
-			query: 'ws=true',
-		});
-		return socketInstance;
-	}
-
-	return null;
-}
-
-function getPossibleObjectIds(): string[] {
-	const ids: string[] = [];
-
-	const search = window.location.search || '';
-	const hash = window.location.hash || '';
-	const full = `${search} ${hash}`;
-
-	const match =
-		full.match(/instance=([a-z0-9_-]+\.\d+)/i) ||
-		full.match(/adapter=([a-z0-9_-]+\.\d+)/i) ||
-		full.match(/([a-z0-9_-]+\.\d+)/i);
-
-	if (match?.[1]) {
-		ids.push(`system.adapter.${match[1]}`);
-	}
-
-	ids.push('system.adapter.alarmmanager.0');
-
-	return [...new Set(ids)];
-}
-
-function loadObject(socket: any, ids: string[]): Promise<any> {
-	return new Promise(resolve => {
-		const tryNext = (index: number): void => {
-			if (index >= ids.length) {
-				resolve(null);
-				return;
-			}
-
-			socket.emit('getObject', ids[index], (obj: any) => {
-				if (obj) {
-					resolve(obj);
-				} else {
-					tryNext(index + 1);
-				}
-			});
-		};
-
-		tryNext(0);
-	});
-}
-
 export default function App(): React.JSX.Element {
 	const [config, setConfig] = useState<Config>(DEFAULT_CONFIG);
 	const [status, setStatus] = useState<string>('UI geladen');
 	const [isSaving, setIsSaving] = useState<boolean>(false);
-	const [objectId, setObjectId] = useState<string>('');
+
+	const socket = useMemo(
+		() =>
+			new Connection({
+				name: 'alarmmanager',
+			}),
+		[],
+	);
 
 	useEffect(() => {
-		try {
-			const socket = getSocket();
+		let active = true;
 
-			if (!socket) {
-				setStatus('Kein ioBroker socket gefunden');
-				return;
-			}
+		(async (): Promise<void> => {
+			try {
+				setStatus('Lade Konfiguration ...');
 
-			setStatus('Lade Konfiguration ...');
+				const obj = await socket.getObject('system.adapter.alarmmanager.0');
 
-			const ids = getPossibleObjectIds();
+				if (!active) {
+					return;
+				}
 
-			loadObject(socket, ids).then((obj: any) => {
 				if (obj?.native) {
-					setObjectId(obj._id);
 					setConfig({
 						apiUserId: obj.native.apiUserId ?? '',
 						apiPassword: obj.native.apiPassword ?? '',
@@ -134,59 +63,48 @@ export default function App(): React.JSX.Element {
 						testRecipientService: obj.native.testRecipientService ?? '2wayS',
 						testRecipientIdentifier: obj.native.testRecipientIdentifier ?? '',
 					});
-					setStatus(`Konfiguration geladen (${obj._id})`);
+					setStatus('Konfiguration geladen');
 				} else {
-					setStatus(`Adapter-Objekt nicht gefunden: ${ids.join(', ')}`);
+					setStatus('Adapter-Objekt nicht gefunden');
 				}
-			});
-		} catch (error) {
-			setStatus(`Fehler beim Laden: ${String(error)}`);
-		}
-	}, []);
+			} catch (error) {
+				if (active) {
+					setStatus(`Fehler beim Laden: ${String(error)}`);
+				}
+			}
+		})();
+
+		return () => {
+			active = false;
+		};
+	}, [socket]);
 
 	function update<K extends keyof Config>(key: K, value: Config[K]): void {
 		setConfig(prev => ({ ...prev, [key]: value }));
 	}
 
-	function save(): void {
+	async function save(): Promise<void> {
 		try {
-			const socket = getSocket();
-
-			if (!socket) {
-				setStatus('Speichern nicht möglich: kein socket');
-				return;
-			}
-
-			if (!objectId) {
-				setStatus('Speichern nicht möglich: kein Objekt geladen');
-				return;
-			}
-
 			setIsSaving(true);
 			setStatus('Speichere Konfiguration ...');
 
-			socket.emit('getObject', objectId, (obj: any) => {
-				if (!obj) {
-					setStatus('Speichern fehlgeschlagen: Objekt nicht gefunden');
-					setIsSaving(false);
-					return;
-				}
+			const obj = await socket.getObject('system.adapter.alarmmanager.0');
 
-				obj.native = {
-					...obj.native,
-					...config,
-				};
+			if (!obj) {
+				setStatus('Speichern fehlgeschlagen: Objekt nicht gefunden');
+				setIsSaving(false);
+				return;
+			}
 
-				socket.emit('setObject', obj._id, obj, (err: any) => {
-					setIsSaving(false);
+			obj.native = {
+				...obj.native,
+				...config,
+			};
 
-					if (err) {
-						setStatus(`Speichern fehlgeschlagen: ${String(err)}`);
-					} else {
-						setStatus(`Konfiguration gespeichert (${obj._id})`);
-					}
-				});
-			});
+			await socket.setObject(obj._id, obj);
+
+			setStatus('Konfiguration gespeichert');
+			setIsSaving(false);
 		} catch (error) {
 			setIsSaving(false);
 			setStatus(`Speichern fehlgeschlagen: ${String(error)}`);
