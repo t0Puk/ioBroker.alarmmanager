@@ -26,6 +26,19 @@ const DEFAULT_CONFIG: Config = {
 	testRecipientIdentifier: '',
 };
 
+function getSocket(): any {
+	if (window.socket && typeof window.socket.emit === 'function') {
+		return window.socket;
+	}
+	if (window.parent?.socket && typeof window.parent.socket.emit === 'function') {
+		return window.parent.socket;
+	}
+	if (window.top?.socket && typeof window.top.socket.emit === 'function') {
+		return window.top.socket;
+	}
+	return null;
+}
+
 export default function App(): React.JSX.Element {
 	const [config, setConfig] = useState<Config>(DEFAULT_CONFIG);
 	const [status, setStatus] = useState<string>('UI geladen');
@@ -33,14 +46,16 @@ export default function App(): React.JSX.Element {
 
 	useEffect(() => {
 		try {
-			if (!window.socket || typeof window.socket.emit !== 'function') {
+			const socket = getSocket();
+
+			if (!socket) {
 				setStatus('Kein ioBroker socket gefunden');
 				return;
 			}
 
 			setStatus('Lade Konfiguration ...');
 
-			window.socket.emit('getObject', 'system.adapter.alarmmanager.0', (obj: any) => {
+			socket.emit('getObject', 'system.adapter.alarmmanager.0', (obj: any) => {
 				if (obj?.native) {
 					setConfig({
 						apiUserId: obj.native.apiUserId ?? '',
@@ -69,7 +84,9 @@ export default function App(): React.JSX.Element {
 
 	function save(): void {
 		try {
-			if (!window.socket || typeof window.socket.emit !== 'function') {
+			const socket = getSocket();
+
+			if (!socket) {
 				setStatus('Speichern nicht möglich: kein socket');
 				return;
 			}
@@ -77,7 +94,7 @@ export default function App(): React.JSX.Element {
 			setIsSaving(true);
 			setStatus('Speichere Konfiguration ...');
 
-			window.socket.emit('getObject', 'system.adapter.alarmmanager.0', (obj: any) => {
+			socket.emit('getObject', 'system.adapter.alarmmanager.0', (obj: any) => {
 				if (!obj) {
 					setStatus('Speichern fehlgeschlagen: Objekt nicht gefunden');
 					setIsSaving(false);
@@ -89,7 +106,7 @@ export default function App(): React.JSX.Element {
 					...config,
 				};
 
-				window.socket.emit('setObject', obj._id, obj, (err: any) => {
+				socket.emit('setObject', obj._id, obj, (err: any) => {
 					setIsSaving(false);
 
 					if (err) {
