@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
 declare const window: any;
+declare const io: any;
 
 type Config = {
 	apiUserId: string;
@@ -26,16 +27,35 @@ const DEFAULT_CONFIG: Config = {
 	testRecipientIdentifier: '',
 };
 
+let socketInstance: any = null;
+
 function getSocket(): any {
+	if (socketInstance && typeof socketInstance.emit === 'function') {
+		return socketInstance;
+	}
+
 	if (window.socket && typeof window.socket.emit === 'function') {
-		return window.socket;
+		socketInstance = window.socket;
+		return socketInstance;
 	}
+
 	if (window.parent?.socket && typeof window.parent.socket.emit === 'function') {
-		return window.parent.socket;
+		socketInstance = window.parent.socket;
+		return socketInstance;
 	}
+
 	if (window.top?.socket && typeof window.top.socket.emit === 'function') {
-		return window.top.socket;
+		socketInstance = window.top.socket;
+		return socketInstance;
 	}
+
+	if (typeof io !== 'undefined') {
+		socketInstance = io.connect('/', {
+			query: 'ws=true',
+		});
+		return socketInstance;
+	}
+
 	return null;
 }
 
