@@ -59,10 +59,53 @@ function getSocket(): any {
 	return null;
 }
 
+function getPossibleObjectIds(): string[] {
+	const ids: string[] = [];
+
+	const search = window.location.search || '';
+	const hash = window.location.hash || '';
+	const full = `${search} ${hash}`;
+
+	const match =
+		full.match(/instance=([a-z0-9_-]+\.\d+)/i) ||
+		full.match(/adapter=([a-z0-9_-]+\.\d+)/i) ||
+		full.match(/([a-z0-9_-]+\.\d+)/i);
+
+	if (match?.[1]) {
+		ids.push(`system.adapter.${match[1]}`);
+	}
+
+	ids.push('system.adapter.alarmmanager.0');
+
+	return [...new Set(ids)];
+}
+
+function loadObject(socket: any, ids: string[]): Promise<any> {
+	return new Promise(resolve => {
+		const tryNext = (index: number): void => {
+			if (index >= ids.length) {
+				resolve(null);
+				return;
+			}
+
+			socket.emit('getObject', ids[index], (obj: any) => {
+				if (obj) {
+					resolve(obj);
+				} else {
+					tryNext(index + 1);
+				}
+			});
+		};
+
+		tryNext(0);
+	});
+}
+
 export default function App(): React.JSX.Element {
 	const [config, setConfig] = useState<Config>(DEFAULT_CONFIG);
 	const [status, setStatus] = useState<string>('UI geladen');
 	const [isSaving, setIsSaving] = useState<boolean>(false);
+	const [objectId, setObjectId] = useState<string>('');
 
 	useEffect(() => {
 		try {
@@ -75,8 +118,11 @@ export default function App(): React.JSX.Element {
 
 			setStatus('Lade Konfiguration ...');
 
-			socket.emit('getObject', 'system.adapter.alarmmanager.0', (obj: any) => {
+			const ids = getPossibleObjectIds();
+
+			loadObject(socket, ids).then((obj: any) => {
 				if (obj?.native) {
+					setObjectId(obj._id);
 					setConfig({
 						apiUserId: obj.native.apiUserId ?? '',
 						apiPassword: obj.native.apiPassword ?? '',
@@ -88,9 +134,9 @@ export default function App(): React.JSX.Element {
 						testRecipientService: obj.native.testRecipientService ?? '2wayS',
 						testRecipientIdentifier: obj.native.testRecipientIdentifier ?? '',
 					});
-					setStatus('Konfiguration geladen');
+					setStatus(`Konfiguration geladen (${obj._id})`);
 				} else {
-					setStatus('Adapter-Objekt nicht gefunden');
+					setStatus(`Adapter-Objekt nicht gefunden: ${ids.join(', ')}`);
 				}
 			});
 		} catch (error) {
@@ -111,10 +157,15 @@ export default function App(): React.JSX.Element {
 				return;
 			}
 
+			if (!objectId) {
+				setStatus('Speichern nicht möglich: kein Objekt geladen');
+				return;
+			}
+
 			setIsSaving(true);
 			setStatus('Speichere Konfiguration ...');
 
-			socket.emit('getObject', 'system.adapter.alarmmanager.0', (obj: any) => {
+			socket.emit('getObject', objectId, (obj: any) => {
 				if (!obj) {
 					setStatus('Speichern fehlgeschlagen: Objekt nicht gefunden');
 					setIsSaving(false);
@@ -132,7 +183,7 @@ export default function App(): React.JSX.Element {
 					if (err) {
 						setStatus(`Speichern fehlgeschlagen: ${String(err)}`);
 					} else {
-						setStatus('Konfiguration gespeichert');
+						setStatus(`Konfiguration gespeichert (${obj._id})`);
 					}
 				});
 			});
@@ -188,6 +239,7 @@ export default function App(): React.JSX.Element {
 		fontWeight: 'bold',
 		marginBottom: 20,
 		borderRadius: 4,
+		wordBreak: 'break-word',
 	};
 
 	return (
