@@ -660,7 +660,14 @@ export default function App(): React.JSX.Element {
 					cmdInstance,
 					'testCredentials',
 					{},
-					(response: { success?: boolean; error?: string } | undefined) => {
+					(
+						response:
+							| {
+									success?: boolean;
+									error?: string;
+							  }
+							| undefined,
+					) => {
 						setIsTestingCredentials(false);
 
 						if (response?.success) {
@@ -689,7 +696,15 @@ export default function App(): React.JSX.Element {
 			cmdInstance,
 			'sendTestMessage',
 			{},
-			(response: { success?: boolean; result?: any; error?: string } | undefined) => {
+			(
+				response:
+					| {
+							success?: boolean;
+							result?: any;
+							error?: string;
+					  }
+					| undefined,
+			) => {
 				setIsSendingTestMessage(false);
 
 				setConfig(prev => ({

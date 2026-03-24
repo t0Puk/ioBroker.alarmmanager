@@ -1,11 +1,20 @@
 import * as utils from '@iobroker/adapter-core';
+<<<<<<< HEAD
 import { EMessageClient } from './lib/emessageClient';
 import type {
     EMessageRecipient,
     EMessageRecipientStatus,
     EMessageSendResult,
     EMessageServiceName,
+=======
+import type {
+	EMessageRecipient,
+	EMessageRecipientStatus,
+	EMessageSendResult,
+	EMessageServiceName,
+>>>>>>> dba6467 (Fix lint and formatting issues)
 } from './lib/emessageClient';
+import { EMessageClient } from './lib/emessageClient';
 
 type TriggerCondition = 'true' | 'false' | '=' | '>' | '<';
 type ConnectionStatus = 'idle' | 'checking' | 'connected' | 'error';
