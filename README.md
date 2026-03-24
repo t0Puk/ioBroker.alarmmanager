@@ -1,4 +1,4 @@
-![Logo](admin/alarmmanagerREADME.png)
+![Logo](admin/alarmmanager_README.png)
 # ioBroker.alarmmanager
 
 [![NPM version](https://img.shields.io/npm/v/iobroker.alarmmanager.svg)](https://www.npmjs.com/package/iobroker.alarmmanager)
