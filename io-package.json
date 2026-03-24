@@ -67,13 +67,56 @@
 	"native": {
 		"apiUserId": "",
 		"apiPassword": "",
-		"senderAddress": "",
 		"pollIntervalSec": 30,
 		"queueDelaySec": 10,
 		"defaultResponseTimeoutSec": 120,
+		"ackResetDelaySec": 60,
+		"outputResetDelaySec": 10,
 		"telegramInstance": "",
+		"sendTelegramWithPager": false,
 		"testRecipientService": "2wayS",
-		"testRecipientIdentifier": ""
+		"testRecipientIdentifier": "",
+		"testMessage": "Dies ist eine Testnachricht vom AlarmManager",
+		"pagers": [],
+		"responseCodes": [
+			{
+				"id": "ack",
+				"label": "Quittiert",
+				"code": 1,
+				"endAlarm": true,
+				"triggerNextPager": false,
+				"setOutput": false,
+				"outputStateId": "",
+				"outputValue": "",
+				"writeAckValue": true,
+				"ackValue": 1
+			},
+			{
+				"id": "forward",
+				"label": "Weiterleiten",
+				"code": 2,
+				"endAlarm": false,
+				"triggerNextPager": true,
+				"setOutput": false,
+				"outputStateId": "",
+				"outputValue": "",
+				"writeAckValue": true,
+				"ackValue": 2
+			},
+			{
+				"id": "reject",
+				"label": "Abgelehnt",
+				"code": 3,
+				"endAlarm": false,
+				"triggerNextPager": true,
+				"setOutput": false,
+				"outputStateId": "",
+				"outputValue": "",
+				"writeAckValue": true,
+				"ackValue": 3
+			}
+		],
+		"triggerStates": []
 	},
 	"objects": [],
 	"instanceObjects": [
