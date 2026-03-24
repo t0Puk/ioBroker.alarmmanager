@@ -10,6 +10,22 @@
 
 **Tests:** ![Test and Release](https://github.com/t0Puk/ioBroker.alarmmanager/workflows/Test%20and%20Release/badge.svg)
 
+## Ich habe einen ersten Teststand meines Adapters AlarmManager auf GitHub veröffentlicht
+Repository: https://github.com/t0Puk/ioBroker.alarmmanager
+
+Testinstallation:
+iobroker url https://github.com/t0Puk/ioBroker.alarmmanager/tarball/main --host this
+
+Getestet werden sollen aktuell:
+- Verbindung zu e*Message
+- Testversand
+- Trigger über State
+- Rückmeldelogik
+- Admin-Oberfläche
+
+Feedback mit Log und Screenshots ist willkommen.
+
+
 ## alarmmanager adapter for ioBroker
 
 Pager alarm system via e*Message API with escalation, acknowledgements and state-based triggers
