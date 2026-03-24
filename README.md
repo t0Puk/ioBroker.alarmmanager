@@ -2,11 +2,6 @@
 # ioBroker.alarmmanager
 
 
-![Number of Installations](https://iobroker.live/badges/alarmmanager-installed.svg)
-![Current version in stable repository](https://iobroker.live/badges/alarmmanager-stable.svg)
-
-[![NPM](https://nodei.co/npm/iobroker.alarmmanager.png?downloads=true)](https://nodei.co/npm/iobroker.alarmmanager/)
-
 **Tests:** ![Test and Release](https://github.com/t0Puk/ioBroker.alarmmanager/workflows/Test%20and%20Release/badge.svg)
 
 ## Ich habe einen ersten Teststand meines Adapters AlarmManager auf GitHub veröffentlicht
