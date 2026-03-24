@@ -1,10 +1,10 @@
 import * as utils from '@iobroker/adapter-core';
-import {
-	EMessageClient,
-	EMessageRecipient,
-	EMessageRecipientStatus,
-	EMessageSendResult,
-	EMessageServiceName,
+import { EMessageClient } from './lib/emessageClient';
+import type {
+    EMessageRecipient,
+    EMessageRecipientStatus,
+    EMessageSendResult,
+    EMessageServiceName,
 } from './lib/emessageClient';
 
 type TriggerCondition = 'true' | 'false' | '=' | '>' | '<';
