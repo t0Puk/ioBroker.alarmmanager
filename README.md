@@ -27,12 +27,12 @@ Feedback mit Log und Screenshots ist willkommen.
 
 ## AlarmManager soll für folgendes gedacht sein
 
-Adapter um Pager zu Alarmieren bei
--Unwetter Warnungen
--Informationen aus Warn Apps (DWD, NINA usw)
--System Störungen
--Eigene States
--usw.
+Adapter um Pager zu Alarmieren bei:
+  Unwetter Warnungen
+  Informationen aus Warn Apps (DWD, NINA usw)
+  System Störungen
+  Eigene States
+  usw.
 
 Und Rückmeldungen abzufragen bei den 2wayS Pagern.
 
