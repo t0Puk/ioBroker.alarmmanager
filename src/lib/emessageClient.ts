@@ -1,4 +1,5 @@
-import axios, { AxiosError, AxiosInstance } from 'axios';
+import axios from 'axios';
+import type { AxiosError, AxiosInstance } from 'axios';
 
 export type EMessageServiceName = '2wayS' | 'eCityruf' | 'eBos';
 
