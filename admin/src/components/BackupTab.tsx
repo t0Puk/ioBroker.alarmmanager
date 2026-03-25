@@ -149,7 +149,7 @@ const BackupTab: React.FC<BackupTabProps> = ({ native, onImport }) => {
 			const importedNative = parseBackup(text);
 			onImport(importedNative);
 			window.alert(
-				'Backup erfolgreich importiert. Bitte anschließend oben auf "Speichern" oder "Speichern und schließen" klicken.',
+				'Backup erfolgreich importiert. Bitte anschließend auf "Speichern" oder "Speichern und schließen" klicken.',
 			);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);

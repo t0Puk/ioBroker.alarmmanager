@@ -1487,15 +1487,20 @@ export default function App(): React.JSX.Element {
 					<BackupTab
 						native={config}
 						onImport={nativePatch =>
-							setConfig(prev => ({
-								...prev,
-								...nativePatch,
-								testRecipientService: (nativePatch.testRecipientService === '2wayS' ||
-								nativePatch.testRecipientService === 'eCityruf' ||
-								nativePatch.testRecipientService === 'eBos'
-									? nativePatch.testRecipientService
-									: prev.testRecipientService) as PagerService,
-							}))
+							setConfig(prev => {
+								const importedService =
+									nativePatch.testRecipientService === '2wayS' ||
+									nativePatch.testRecipientService === 'eCityruf' ||
+									nativePatch.testRecipientService === 'eBos'
+										? nativePatch.testRecipientService
+										: prev.testRecipientService;
+
+								return {
+									...prev,
+									...nativePatch,
+									testRecipientService: importedService,
+								};
+							})
 						}
 					/>
 				)}
