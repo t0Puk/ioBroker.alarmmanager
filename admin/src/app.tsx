@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Connection from '@iobroker/adapter-react/Connection';
 import SelectID from '@iobroker/adapter-react/Dialogs/SelectID';
+import BackupTab from './components/BackupTab';
 
 declare const window: any;
 declare const io: any;
@@ -57,7 +58,7 @@ type Config = {
 	triggerStates: TriggerStateEntry[];
 };
 
-type TabKey = 'general' | 'pagers' | 'responses' | 'triggers' | 'timing';
+type TabKey = 'general' | 'pagers' | 'responses' | 'triggers' | 'timing' | 'backup';
 
 type TelegramInstanceOption = {
 	value: string;
@@ -246,7 +247,6 @@ function sanitizeSelectIdDialog(doc: Document): void {
 		replaceNodeText(doc.body);
 	}
 
-	// Direkt auf die sichtbaren Button-Labels unten rechts gehen
 	doc.querySelectorAll('span.MuiButton-label').forEach(node => {
 		const text = (node.textContent ?? '').trim();
 		if (text === 'RA_OK' || text === 'ra_OK') {
@@ -257,7 +257,6 @@ function sanitizeSelectIdDialog(doc: Document): void {
 		}
 	});
 
-	// Überschrift oben im Dialog
 	doc.querySelectorAll('div, span, h1, h2, h3').forEach(node => {
 		const text = (node.textContent ?? '').trim();
 		if (text === 'RA_Please select object ID...' || text === 'ra_Please select object ID...') {
@@ -265,7 +264,6 @@ function sanitizeSelectIdDialog(doc: Document): void {
 		}
 	});
 
-	// Tabellenköpfe
 	doc.querySelectorAll('th, td, div, span').forEach(node => {
 		const text = (node.textContent ?? '').trim();
 		if (text === 'RA_filter_id' || text === 'ra_filter_id') {
@@ -283,7 +281,6 @@ function sanitizeSelectIdDialog(doc: Document): void {
 		}
 	});
 
-	// Falls der Dialog in iframes steckt
 	doc.querySelectorAll('iframe').forEach(frame => {
 		try {
 			const frameDoc = frame.contentDocument;
@@ -1472,6 +1469,12 @@ export default function App(): React.JSX.Element {
 				>
 					Test & Zeiten
 				</button>
+				<button
+					style={tabButtonStyle('backup')}
+					onClick={() => setActiveTab('backup')}
+				>
+					Backup
+				</button>
 			</div>
 
 			<div style={contentStyle}>
@@ -1480,6 +1483,22 @@ export default function App(): React.JSX.Element {
 				{activeTab === 'responses' && renderResponsesTab()}
 				{activeTab === 'triggers' && renderTriggersTab()}
 				{activeTab === 'timing' && renderTimingTab()}
+				{activeTab === 'backup' && (
+					<BackupTab
+						native={config}
+						onImport={nativePatch =>
+							setConfig(prev => ({
+								...prev,
+								...nativePatch,
+								testRecipientService: (nativePatch.testRecipientService === '2wayS' ||
+								nativePatch.testRecipientService === 'eCityruf' ||
+								nativePatch.testRecipientService === 'eBos'
+									? nativePatch.testRecipientService
+									: prev.testRecipientService) as PagerService,
+							}))
+						}
+					/>
+				)}
 			</div>
 
 			{showObjectPicker ? (
