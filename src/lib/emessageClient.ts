@@ -1,54 +1,38 @@
-<<<<<<< HEAD
-import axios from 'axios';
-import type { AxiosError, AxiosInstance } from 'axios';
-=======
 import type { AxiosError, AxiosInstance } from 'axios';
 import axios from 'axios';
->>>>>>> dba6467 (Fix lint and formatting issues)
 
 export type EMessageServiceName = '2wayS' | 'eCityruf' | 'eBos';
 
 export interface EMessageRecipient {
 	serviceName: EMessageServiceName;
-
 	identifier: string;
 }
 
 export interface EMessageSendResult {
 	trackingId?: string;
-
 	raw: any;
 }
 
 export interface EMessageStatusEntry {
 	answer?: string;
-
 	answerNo?: string | number;
-
 	devices?: Array<{
 		deviceName?: string;
-
 		deviceSerial?: string;
 	}>;
 }
 
 export interface EMessageRecipientStatus {
 	externalRecipient?: string;
-
 	identifier?: string;
-
 	service?: string;
-
 	numberOfRecipients?: string;
-
 	status?: EMessageStatusEntry[];
 }
 
 export interface EMessageStatusResult {
 	messageContent?: string;
-
 	recipients: EMessageRecipientStatus[];
-
 	raw: any;
 }
 
