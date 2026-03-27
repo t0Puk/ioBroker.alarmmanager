@@ -29,6 +29,12 @@ class AlarmManager extends utils.Adapter {
   statusPollTimer = null;
   ackResetTimer = null;
   outputResetTimers = {};
+  // Pro Auslöser-Eintrag merken, ob dessen Bedingung aktuell aktiv ist
+  triggerActiveStates = {};
+  // Queue für eingehende Alarme
+  alarmQueue = [];
+  queueProcessingTimer = null;
+  queueSequence = 0;
   constructor(options = {}) {
     super({
       ...options,
@@ -68,6 +74,16 @@ class AlarmManager extends utils.Adapter {
   sanitizePagerFolderName(pagerId, fallbackIndex) {
     const safe = String(pagerId || "").trim().replace(/[^a-zA-Z0-9_]/g, "_").replace(/_+/g, "_").replace(/^_+|_+$/g, "");
     return safe ? `pager_${safe}` : `pager_${fallbackIndex + 1}`;
+  }
+  getTriggerKey(trigger, index) {
+    var _a;
+    const triggerId = String(trigger.id || "").trim();
+    if (triggerId) {
+      return triggerId;
+    }
+    return [((_a = trigger.stateId) == null ? void 0 : _a.trim()) || "", trigger.condition || "", trigger.compareValue || "", String(index)].join(
+      "::"
+    );
   }
   async ensureStaticObjects() {
     await this.setObjectNotExistsAsync("pagers", {
@@ -532,6 +548,16 @@ class AlarmManager extends utils.Adapter {
       return ((_a = item.label) == null ? void 0 : _a.trim().toLowerCase()) === normalized.toLowerCase();
     }) || null;
   }
+  findTriggersByStateId(stateId) {
+    const triggers = Array.isArray(this.nativeConfig.triggerStates) ? this.nativeConfig.triggerStates : [];
+    return triggers.map((trigger, index) => ({
+      trigger,
+      triggerKey: this.getTriggerKey(trigger, index)
+    })).filter((item) => {
+      var _a;
+      return item.trigger.enabled && ((_a = item.trigger.stateId) == null ? void 0 : _a.trim()) === stateId;
+    });
+  }
   clearPagerTimeout() {
     if (this.pagerResponseTimeout) {
       clearTimeout(this.pagerResponseTimeout);
@@ -560,6 +586,12 @@ class AlarmManager extends utils.Adapter {
     if (this.outputResetTimers[stateId]) {
       clearTimeout(this.outputResetTimers[stateId]);
       delete this.outputResetTimers[stateId];
+    }
+  }
+  clearQueueProcessingTimer() {
+    if (this.queueProcessingTimer) {
+      clearTimeout(this.queueProcessingTimer);
+      this.queueProcessingTimer = null;
     }
   }
   async writeAckOutputValue(value) {
@@ -846,6 +878,31 @@ class AlarmManager extends utils.Adapter {
     }
     return result;
   }
+  async initializeTriggerStates() {
+    var _a;
+    this.triggerActiveStates = {};
+    const triggers = Array.isArray(this.nativeConfig.triggerStates) ? this.nativeConfig.triggerStates : [];
+    for (let index = 0; index < triggers.length; index++) {
+      const trigger = triggers[index];
+      const stateId = (_a = trigger.stateId) == null ? void 0 : _a.trim();
+      if (!trigger.enabled || !stateId) {
+        continue;
+      }
+      const triggerKey = this.getTriggerKey(trigger, index);
+      try {
+        const state = await this.getForeignStateAsync(stateId);
+        const isActive = state ? this.evaluateTriggerCondition(trigger, state) : false;
+        this.triggerActiveStates[triggerKey] = isActive;
+        this.log.debug(
+          `Trigger initialisiert: key=${triggerKey}, state=${stateId}, aktiv=${isActive}, value=${JSON.stringify(state == null ? void 0 : state.val)}`
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.triggerActiveStates[triggerKey] = false;
+        this.log.warn(`Konnte Trigger-Status f\xFCr ${stateId} nicht initialisieren: ${message}`);
+      }
+    }
+  }
   async subscribeConfiguredTriggerStates() {
     var _a;
     const triggers = Array.isArray(this.nativeConfig.triggerStates) ? this.nativeConfig.triggerStates : [];
@@ -862,10 +919,20 @@ class AlarmManager extends utils.Adapter {
   evaluateTriggerCondition(trigger, state) {
     const currentValue = state.val;
     switch (trigger.condition) {
-      case "true":
-        return currentValue === true;
-      case "false":
-        return currentValue === false;
+      case "true": {
+        if (currentValue === true) {
+          return true;
+        }
+        const normalized = String(currentValue).trim().toLowerCase();
+        return normalized === "1" || normalized === "true" || normalized === "on";
+      }
+      case "false": {
+        if (currentValue === false) {
+          return true;
+        }
+        const normalized = String(currentValue).trim().toLowerCase();
+        return normalized === "0" || normalized === "false" || normalized === "off";
+      }
       case "=":
         return String(currentValue) === trigger.compareValue;
       case ">": {
@@ -881,13 +948,6 @@ class AlarmManager extends utils.Adapter {
       default:
         return false;
     }
-  }
-  findTriggerByStateId(stateId) {
-    const triggers = Array.isArray(this.nativeConfig.triggerStates) ? this.nativeConfig.triggerStates : [];
-    return triggers.find((trigger) => {
-      var _a;
-      return trigger.enabled && ((_a = trigger.stateId) == null ? void 0 : _a.trim()) === stateId;
-    }) || null;
   }
   async sendToPager(pager, messageText) {
     const pagerLabel = this.formatPagerLabel(pager);
@@ -911,10 +971,12 @@ class AlarmManager extends utils.Adapter {
     }
     return result;
   }
-  async triggerAlarm(trigger, state) {
+  async enqueueAlarm(trigger, triggerKey, state) {
     var _a;
-    if (this.currentAlarm) {
-      this.log.warn(`Alarm bereits aktiv. Neue Ausl\xF6sung von ${trigger.stateId} wird ignoriert.`);
+    const messageText = (_a = trigger.messageText) == null ? void 0 : _a.trim();
+    if (!messageText) {
+      this.log.warn(`Trigger ${trigger.stateId} hat keinen Nachrichtentext`);
+      await this.setStateAsync("alarm.summary", `Trigger ${trigger.stateId} hat keinen Nachrichtentext`, true);
       return;
     }
     const activePagers = this.getSortedActivePagers();
@@ -923,19 +985,84 @@ class AlarmManager extends utils.Adapter {
       await this.setStateAsync("alarm.summary", "Ausl\xF6sung erkannt, aber keine aktiven Pager vorhanden", true);
       return;
     }
-    const firstPager = activePagers[0];
-    const messageText = (_a = trigger.messageText) == null ? void 0 : _a.trim();
-    if (!messageText) {
-      this.log.warn(`Trigger ${trigger.stateId} hat keinen Nachrichtentext`);
-      await this.setStateAsync("alarm.summary", `Trigger ${trigger.stateId} hat keinen Nachrichtentext`, true);
-      return;
-    }
-    this.log.info(`Alarm ausgel\xF6st durch ${trigger.stateId}`);
-    this.log.info(`Erster Pager der Eskalation: ${this.formatPagerLabel(firstPager)}`);
-    this.currentAlarm = {
+    const queueEntry = {
+      queueId: `${Date.now()}_${++this.queueSequence}`,
+      triggerKey,
       triggerId: trigger.id,
       triggerStateId: trigger.stateId,
       messageText,
+      triggerValue: state.val,
+      enqueuedAt: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    this.alarmQueue.push(queueEntry);
+    this.log.info(
+      `Alarm in Queue aufgenommen: ${trigger.stateId}, triggerKey=${triggerKey}, Queue-L\xE4nge=${this.alarmQueue.length}`
+    );
+    await this.setStateAsync(
+      "alarm.summary",
+      `Alarm von ${trigger.stateId} zur Queue hinzugef\xFCgt (${this.alarmQueue.length} wartend)`,
+      true
+    );
+    this.scheduleQueueProcessing();
+  }
+  scheduleQueueProcessing() {
+    if (this.currentAlarm) {
+      return;
+    }
+    if (this.queueProcessingTimer) {
+      return;
+    }
+    if (!this.alarmQueue.length) {
+      return;
+    }
+    const delaySec = Math.max(0, Number(this.nativeConfig.queueDelaySec || 0));
+    const delayMs = delaySec * 1e3;
+    this.log.info(
+      `Queue-Verarbeitung geplant: ${this.alarmQueue.length} wartende Alarme, Start in ${delaySec} Sekunden`
+    );
+    this.queueProcessingTimer = setTimeout(() => {
+      this.clearQueueProcessingTimer();
+      void this.processNextQueuedAlarm();
+    }, delayMs);
+  }
+  async processNextQueuedAlarm() {
+    if (this.currentAlarm) {
+      return;
+    }
+    if (!this.alarmQueue.length) {
+      return;
+    }
+    const nextAlarm = this.alarmQueue.shift();
+    if (!nextAlarm) {
+      return;
+    }
+    try {
+      await this.startAlarmSession(nextAlarm);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.log.error(`Fehler beim Starten des Queue-Alarms ${nextAlarm.triggerStateId}: ${message}`);
+      await this.setStateAsync("alarm.summary", `Queue-Alarm fehlgeschlagen: ${message}`, true);
+      this.currentAlarm = null;
+      this.scheduleQueueProcessing();
+    }
+  }
+  async startAlarmSession(queueEntry) {
+    if (this.currentAlarm) {
+      throw new Error("Es ist bereits ein aktiver Alarm vorhanden");
+    }
+    const activePagers = this.getSortedActivePagers();
+    if (!activePagers.length) {
+      this.log.warn("Queue-Alarm kann nicht gestartet werden: keine aktiven Pager vorhanden");
+      await this.setStateAsync("alarm.summary", "Queue-Alarm erkannt, aber keine aktiven Pager vorhanden", true);
+      return;
+    }
+    const firstPager = activePagers[0];
+    this.log.info(`Alarm aus Queue wird gestartet: ${queueEntry.triggerStateId}`);
+    this.log.info(`Erster Pager der Eskalation: ${this.formatPagerLabel(firstPager)}`);
+    this.currentAlarm = {
+      triggerId: queueEntry.triggerId,
+      triggerStateId: queueEntry.triggerStateId,
+      messageText: queueEntry.messageText,
       startedAt: (/* @__PURE__ */ new Date()).toISOString(),
       activePager: firstPager,
       currentPagerIndex: 0,
@@ -948,8 +1075,8 @@ class AlarmManager extends utils.Adapter {
     await this.setStateAsync("alarm.active", true, true);
     await this.setStateAsync("alarm.finished", false, true);
     await this.setStateAsync("alarm.acknowledged", false, true);
-    await this.setStateAsync("alarm.lastTriggerStateId", trigger.stateId, true);
-    await this.setStateAsync("alarm.lastTriggerMessage", messageText, true);
+    await this.setStateAsync("alarm.lastTriggerStateId", queueEntry.triggerStateId, true);
+    await this.setStateAsync("alarm.lastTriggerMessage", queueEntry.messageText, true);
     await this.setStateAsync("alarm.triggeredCount", 1, true);
     await this.setStateAsync(
       "alarm.summary",
@@ -957,7 +1084,7 @@ class AlarmManager extends utils.Adapter {
       true
     );
     try {
-      const result = await this.sendToPager(firstPager, messageText);
+      const result = await this.sendToPager(firstPager, queueEntry.messageText);
       this.currentAlarm.trackingId = result.trackingId || "";
       if (this.serviceSupportsDirectResponse(firstPager.service)) {
         await this.setStateAsync(
@@ -982,8 +1109,9 @@ class AlarmManager extends utils.Adapter {
       await this.setStateAsync("alarm.active", false, true);
       await this.setStateAsync("alarm.currentTrackingId", "", true);
       this.currentAlarm = null;
+      this.scheduleQueueProcessing();
     }
-    this.log.debug(`Ausl\xF6sender State-Wert: ${JSON.stringify(state.val)}`);
+    this.log.debug(`Ausl\xF6sender State-Wert aus Queue: ${JSON.stringify(queueEntry.triggerValue)}`);
   }
   async finishAlarm(summaryText, acknowledged) {
     if (!this.currentAlarm) {
@@ -1002,6 +1130,7 @@ class AlarmManager extends utils.Adapter {
     await this.setStateAsync("alarm.currentTrackingId", "", true);
     this.log.info(`Alarm abgeschlossen: ${summaryText}`);
     this.currentAlarm = null;
+    this.scheduleQueueProcessing();
   }
   async triggerNextPager(reason) {
     if (!this.currentAlarm) {
@@ -1100,6 +1229,7 @@ class AlarmManager extends utils.Adapter {
       await this.resetAlarmStates();
       await this.resetAckOutputValue();
       await this.subscribeConfiguredTriggerStates();
+      await this.initializeTriggerStates();
       const hasCredentials = !!((_a = this.nativeConfig.apiUserId) == null ? void 0 : _a.trim()) && !!((_b = this.nativeConfig.apiPassword) == null ? void 0 : _b.trim());
       if (hasCredentials) {
         try {
@@ -1172,17 +1302,32 @@ class AlarmManager extends utils.Adapter {
     if (state.ack) {
       return;
     }
-    const trigger = this.findTriggerByStateId(id);
-    if (!trigger) {
+    const matchingTriggers = this.findTriggersByStateId(id);
+    if (!matchingTriggers.length) {
       return;
     }
-    this.log.info(`Trigger-State \xC4nderung erkannt: ${id}`);
-    const matches = this.evaluateTriggerCondition(trigger, state);
-    if (!matches) {
-      this.log.debug(`Trigger-Bedingung nicht erf\xFCllt f\xFCr ${id}`);
-      return;
+    for (const item of matchingTriggers) {
+      const trigger = item.trigger;
+      const triggerKey = item.triggerKey;
+      const isCurrentlyActive = this.evaluateTriggerCondition(trigger, state);
+      const wasPreviouslyActive = this.triggerActiveStates[triggerKey] === true;
+      this.log.info(
+        `Trigger-State \xC4nderung erkannt: ${id}, triggerKey=${triggerKey}, vorherAktiv=${wasPreviouslyActive}, jetztAktiv=${isCurrentlyActive}`
+      );
+      if (!isCurrentlyActive) {
+        if (wasPreviouslyActive) {
+          this.log.info(`Trigger ${id} (${triggerKey}) wurde zur\xFCckgesetzt und ist wieder scharf`);
+        }
+        this.triggerActiveStates[triggerKey] = false;
+        continue;
+      }
+      if (wasPreviouslyActive) {
+        this.log.debug(`Trigger ${id} (${triggerKey}) bleibt aktiv, kein erneuter Alarm`);
+        continue;
+      }
+      this.triggerActiveStates[triggerKey] = true;
+      await this.enqueueAlarm(trigger, triggerKey, state);
     }
-    await this.triggerAlarm(trigger, state);
   }
   onObjectChange(id, obj) {
     if (obj) {
@@ -1194,6 +1339,7 @@ class AlarmManager extends utils.Adapter {
     this.clearStatusPollTimer();
     this.clearAckResetTimer();
     this.clearAllOutputResetTimers();
+    this.clearQueueProcessingTimer();
     Promise.all([this.setServiceConnection(false), this.setConnectionStatus("idle", "")]).then(() => callback()).catch(() => callback());
   }
   async onMessage(obj) {
