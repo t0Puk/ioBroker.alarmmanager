@@ -1,77 +1,110 @@
 ![Logo](admin/alarmmanager_README.png)
 # ioBroker.alarmmanager
 
-
 **Tests:** ![Test and Release](https://github.com/t0Puk/ioBroker.alarmmanager/workflows/Test%20and%20Release/badge.svg)
 
-## Ich habe einen ersten Teststand meines Adapters AlarmManager auf GitHub veröffentlicht
-Repository: https://github.com/t0Puk/ioBroker.alarmmanager
+## Übersicht
+
+**ioBroker.alarmmanager** ist ein Adapter zur Alarmierung von Pagern über die **e*Message API**.  
+Er unterstützt Eskalationsstufen, Rückmeldungen, zustandsbasierte Trigger sowie jetzt auch **Zeitfenster pro Trigger**.
+
+Damit kann festgelegt werden, dass bestimmte Alarme nur tagsüber gesendet werden, während wichtige Alarme weiterhin rund um die Uhr alarmieren.
+
+## Funktionen
+
+- Alarmierung über **e*Message**
+- Unterstützung für:
+  - **2wayS**
+  - **eCityruf**
+  - **eBos**
+- Eskalationslogik mit mehreren Pagern
+- Rückmeldelogik über Antwortcodes
+- zustandsbasierte Auslöser über ioBroker States
+- optionaler paralleler Versand über Telegram
+- konfigurierbare Folgeaktionen bei Antwortcodes
+- **Zeitfenster pro Trigger**
+- Testversand aus der Admin-Oberfläche
+
+## Typische Einsatzfälle
+
+Der Adapter kann zum Beispiel für folgende Alarme verwendet werden:
+
+- Unwetterwarnungen
+- Meldungen aus Warn-Apps wie DWD oder NINA
+- technische Störungen
+- Systemfehler
+- Gebäude- oder Hausautomationsmeldungen
+- eigene ioBroker States
+- individuelle Eskalationsszenarien
+
+## Neue Funktion: Zeitfenster pro Trigger
+
+Ab Version **0.0.4** kann für jeden Trigger ein eigenes Zeitfenster definiert werden.
+
+Beispiele:
+
+- **unwichtiger Alarm nur tagsüber:** `06:00` bis `22:00`
+- **Nachtalarm:** `22:00` bis `06:00`
+- **immer aktiv:** Zeitfenster deaktiviert
+
+Damit lassen sich weniger wichtige Meldungen nachts unterdrücken, ohne dass kritische Alarme verloren gehen.
+
+### Verhalten
+
+- Ein Trigger löst nur aus, wenn das Zeitfenster aktiv ist und die aktuelle Uhrzeit darin liegt.
+- Ist kein Zeitfenster aktiv, verhält sich der Trigger wie bisher.
+- Nachtfenster wie `22:00` bis `06:00` werden unterstützt.
+- Wenn ein Alarm wegen `queueDelaySec` erst später verarbeitet wird, wird vor dem Versand nochmals geprüft, ob das Zeitfenster dann noch gültig ist.
+
+## Admin-Oberfläche
+
+Im Bereich **Auslöser / States** können pro Trigger folgende Felder gesetzt werden:
+
+- **Zeitfenster aktiv**
+- **Erlaubt von**
+- **Erlaubt bis**
+
+Zeitformat: `HH:mm`
+
+Beispiele:
+- `06:00`
+- `22:00`
+
+## Trigger / States
+
+Ein Trigger besteht aus:
+
+- State-ID
+- aktiv / inaktiv
+- Bedingung
+- Vergleichswert
+- Nachrichtentext
+- optionalem Zeitfenster
+
+Unterstützte Bedingungen:
+
+- `true`
+- `false`
+- `=`
+- `>`
+- `<`
+
+## Antwortcodes
+
+Antwortcodes können verwendet werden, um auf Pager-Rückmeldungen zu reagieren.
+
+Mögliche Aktionen:
+
+- Sendevorgang beenden
+- nächsten Pager auslösen
+- Ausgang / Folgeaktion auslösen
+- Quittierwert in Datenpunkt schreiben
+
+## Testinstallation
+
+Repository:  
+`https://github.com/t0Puk/ioBroker.alarmmanager`
 
 Testinstallation:
+```bash
 iobroker url https://github.com/t0Puk/ioBroker.alarmmanager/tarball/main --host this
-
-Getestet werden sollen aktuell:
-- Verbindung zu e*Message
-- Testversand
-- Trigger über State
-- Rückmeldelogik
-- Admin-Oberfläche
-
-Feedback mit Log und Screenshots ist willkommen.
-
-## AlarmManager soll für folgendes gedacht sein
-
-Adapter um Pager zu Alarmieren bei:
- - Unwetter Warnungen
- - Informationen aus Warn Apps (DWD, NINA usw)
- - System Störungen
- - Eigene States
- - usw.
-
-Und Rückmeldungen abzufragen bei den 2wayS Pagern.
-
-
-## alarmmanager adapter for ioBroker
-
-Pager alarm system via e*Message API with escalation, acknowledgements and state-based triggers
-
-## Developer manual
-This section is intended for the developer. It can be deleted later.
-
-### DISCLAIMER
-
-Please make sure that you consider copyrights and trademarks when you use names or logos of a company and add a disclaimer to your README.
-You can check other adapters for examples or ask in the developer community. Using a name or logo of a company without permission may cause legal problems for you.
-
-
-## Changelog
-<!--
-	Placeholder for the next version (at the beginning of the line):
-	### **WORK IN PROGRESS**
--->
-
-### **WORK IN PROGRESS**
-* (TobiasP) initial release
-
-## License
-MIT License
-
-Copyright (c) 2026 TobiasP 
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
