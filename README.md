@@ -5,14 +5,14 @@
 
 ## Übersicht
 
-**ioBroker.alarmmanager** ist ein Adapter zur Alarmierung von Pagern über die **e*Message API**.  
-Er unterstützt Eskalationsstufen, Rückmeldungen, zustandsbasierte Trigger sowie jetzt auch **Zeitfenster pro Trigger**.
+**ioBroker.alarmmanager** ist ein Adapter zur Alarmierung von Pagern über die e*Message API.  
+Er unterstützt Eskalationsstufen, Rückmeldungen, zustandsbasierte Trigger sowie jetzt auch Zeitfenster pro Trigger.
 
 Damit kann festgelegt werden, dass bestimmte Alarme nur tagsüber gesendet werden, während wichtige Alarme weiterhin rund um die Uhr alarmieren.
 
 ## Funktionen
 
-- Alarmierung über **e*Message**
+- Alarmierung über e*Message
 - Unterstützung für:
   - **2wayS**
   - **eCityruf**
@@ -108,3 +108,39 @@ Repository:
 Testinstallation:
 ```bash
 iobroker url https://github.com/t0Puk/ioBroker.alarmmanager/tarball/main --host this
+
+## Changelog
+
+0.0.4
+Zeitfenster pro Trigger ergänzt
+Admin-Oberfläche für Zeitfenster erweitert
+Alarmversand prüft Zeitfenster auch vor Queue-Verarbeitung erneut
+
+0.0.3
+Admin-Oberfläche korrigiert
+
+0.0.1
+Erstveröffentlichung
+
+
+## License:
+MIT License
+
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
