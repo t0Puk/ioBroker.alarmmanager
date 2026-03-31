@@ -1,7 +1,7 @@
 {
 	"common": {
 		"name": "alarmmanager",
-		"version": "0.0.3",
+		"version": "0.0.4",
 		"news": {
 			"0.0.1": {
 				"en": "initial release",
@@ -10,6 +10,10 @@
 			"0.0.3": {
 				"en": "Fix admin UI loading",
 				"de": "Admin-Oberfläche korrigiert"
+			},
+			"0.0.4": {
+				"en": "Added trigger time windows for state-based alarms",
+				"de": "Zeitfenster für zustandsbasierte Auslöser hinzugefügt"
 			}
 		},
 		"titleLang": {
@@ -17,8 +21,8 @@
 			"de": "AlarmManager"
 		},
 		"desc": {
-			"en": "Pager alarm system via e*Message API with escalation, acknowledgements and state-based triggers",
-			"de": "Pager-Alarmsystem über e*Message API mit Eskalation, Bestätigungen und zustandsbasierten Auslösern"
+			"en": "Pager alarm system via e*Message API with escalation, acknowledgements, state-based triggers and optional trigger time windows",
+			"de": "Pager-Alarmsystem über e*Message API mit Eskalation, Bestätigungen, zustandsbasierten Auslösern und optionalen Zeitfenstern"
 		},
 		"authors": ["TobiasP <app@gmail.com>"],
 		"keywords": [
@@ -116,7 +120,19 @@
 				"ackValue": 3
 			}
 		],
-		"triggerStates": []
+		"triggerStates": [
+			{
+				"id": "",
+				"stateId": "",
+				"enabled": true,
+				"condition": "true",
+				"compareValue": "",
+				"messageText": "",
+				"timeRestrictionEnabled": false,
+				"allowedFrom": "06:00",
+				"allowedTo": "22:00"
+			}
+		]
 	},
 	"objects": [],
 	"instanceObjects": [

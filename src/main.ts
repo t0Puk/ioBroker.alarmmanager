@@ -39,6 +39,9 @@ interface TriggerStateEntry {
 	condition: TriggerCondition;
 	compareValue: string;
 	messageText: string;
+	timeRestrictionEnabled?: boolean;
+	allowedFrom?: string;
+	allowedTo?: string;
 }
 
 interface AlarmManagerNative {
@@ -167,6 +170,78 @@ class AlarmManager extends utils.Adapter {
 		return [trigger.stateId?.trim() || '', trigger.condition || '', trigger.compareValue || '', String(index)].join(
 			'::',
 		);
+	}
+
+	private parseTimeToMinutes(time: string | undefined): number | null {
+		const normalized = String(time ?? '').trim();
+		if (!normalized) {
+			return null;
+		}
+
+		const match = normalized.match(/^(\d{1,2}):(\d{2})$/);
+		if (!match) {
+			return null;
+		}
+
+		const hours = Number(match[1]);
+		const minutes = Number(match[2]);
+
+		if (Number.isNaN(hours) || Number.isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+			return null;
+		}
+
+		return hours * 60 + minutes;
+	}
+
+	private isTriggerAllowedNow(trigger: TriggerStateEntry, now = new Date()): boolean {
+		if (!trigger.timeRestrictionEnabled) {
+			return true;
+		}
+
+		const fromMinutes = this.parseTimeToMinutes(trigger.allowedFrom);
+		const toMinutes = this.parseTimeToMinutes(trigger.allowedTo);
+
+		if (fromMinutes === null || toMinutes === null) {
+			this.log.warn(
+				`Trigger ${trigger.stateId} hat ungültige Zeitangaben (${String(trigger.allowedFrom)} - ${String(
+					trigger.allowedTo,
+				)}), Alarm wird sicherheitshalber zugelassen`,
+			);
+			return true;
+		}
+
+		const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+		// Gleiches Start-/Ende-Fenster = 24h erlaubt
+		if (fromMinutes === toMinutes) {
+			return true;
+		}
+
+		// Normales Zeitfenster, z.B. 06:00 - 22:00
+		if (fromMinutes < toMinutes) {
+			return currentMinutes >= fromMinutes && currentMinutes < toMinutes;
+		}
+
+		// Nachtfenster, z.B. 22:00 - 06:00
+		return currentMinutes >= fromMinutes || currentMinutes < toMinutes;
+	}
+
+	private getConfiguredTriggers(): TriggerStateEntry[] {
+		return Array.isArray(this.nativeConfig.triggerStates) ? this.nativeConfig.triggerStates : [];
+	}
+
+	private findTriggerByQueueEntry(queueEntry: QueuedAlarmEntry): TriggerStateEntry | null {
+		const triggers = this.getConfiguredTriggers();
+
+		if (queueEntry.triggerId) {
+			const byId = triggers.find(trigger => String(trigger.id || '').trim() === queueEntry.triggerId);
+			if (byId) {
+				return byId;
+			}
+		}
+
+		const byKey = triggers.find((trigger, index) => this.getTriggerKey(trigger, index) === queueEntry.triggerKey);
+		return byKey || null;
 	}
 
 	private async ensureStaticObjects(): Promise<void> {
@@ -1144,7 +1219,6 @@ class AlarmManager extends utils.Adapter {
 
 		switch (trigger.condition) {
 			case 'true': {
-				// akzeptiert true, 1, "1", "true", "on"
 				if (currentValue === true) {
 					return true;
 				}
@@ -1154,7 +1228,6 @@ class AlarmManager extends utils.Adapter {
 			}
 
 			case 'false': {
-				// akzeptiert false, 0, "0", "false", "off"
 				if (currentValue === false) {
 					return true;
 				}
@@ -1212,6 +1285,20 @@ class AlarmManager extends utils.Adapter {
 	}
 
 	private async enqueueAlarm(trigger: TriggerStateEntry, triggerKey: string, state: ioBroker.State): Promise<void> {
+		if (!this.isTriggerAllowedNow(trigger)) {
+			this.log.info(
+				`Trigger ${trigger.stateId} ausgelöst, aber wegen Zeitfenster nicht in Queue aufgenommen (${String(
+					trigger.allowedFrom ?? '',
+				)} - ${String(trigger.allowedTo ?? '')})`,
+			);
+			await this.setStateAsync(
+				'alarm.summary',
+				`Trigger ${trigger.stateId} ist aktiv, aber aktuell außerhalb des erlaubten Zeitfensters`,
+				true,
+			);
+			return;
+		}
+
 		const messageText = trigger.messageText?.trim();
 
 		if (!messageText) {
@@ -1292,6 +1379,33 @@ class AlarmManager extends utils.Adapter {
 			return;
 		}
 
+		const trigger = this.findTriggerByQueueEntry(nextAlarm);
+		if (!trigger) {
+			this.log.warn(
+				`Queue-Alarm ${nextAlarm.triggerStateId} verworfen: Trigger-Konfiguration nicht mehr gefunden`,
+			);
+			await this.setStateAsync(
+				'alarm.summary',
+				`Queue-Alarm ${nextAlarm.triggerStateId} verworfen: Trigger nicht mehr vorhanden`,
+				true,
+			);
+			this.scheduleQueueProcessing();
+			return;
+		}
+
+		if (!this.isTriggerAllowedNow(trigger)) {
+			this.log.info(
+				`Queue-Alarm ${nextAlarm.triggerStateId} verworfen: Zeitfenster inzwischen nicht mehr erlaubt`,
+			);
+			await this.setStateAsync(
+				'alarm.summary',
+				`Queue-Alarm ${nextAlarm.triggerStateId} wurde wegen Zeitfenster nicht gesendet`,
+				true,
+			);
+			this.scheduleQueueProcessing();
+			return;
+		}
+
 		try {
 			await this.startAlarmSession(nextAlarm);
 		} catch (error) {
@@ -1306,6 +1420,17 @@ class AlarmManager extends utils.Adapter {
 	private async startAlarmSession(queueEntry: QueuedAlarmEntry): Promise<void> {
 		if (this.currentAlarm) {
 			throw new Error('Es ist bereits ein aktiver Alarm vorhanden');
+		}
+
+		const trigger = this.findTriggerByQueueEntry(queueEntry);
+		if (trigger && !this.isTriggerAllowedNow(trigger)) {
+			this.log.info(`Alarm aus Queue ${queueEntry.triggerStateId} wird nicht gestartet: außerhalb Zeitfenster`);
+			await this.setStateAsync(
+				'alarm.summary',
+				`Alarm ${queueEntry.triggerStateId} wurde wegen Zeitfenster nicht gestartet`,
+				true,
+			);
+			return;
 		}
 
 		const activePagers = this.getSortedActivePagers();
@@ -1403,7 +1528,6 @@ class AlarmManager extends utils.Adapter {
 		this.log.info(`Alarm abgeschlossen: ${summaryText}`);
 		this.currentAlarm = null;
 
-		// Nächsten Queue-Eintrag mit Queue Delay starten
 		this.scheduleQueueProcessing();
 	}
 
@@ -1633,7 +1757,6 @@ class AlarmManager extends utils.Adapter {
 				`Trigger-State Änderung erkannt: ${id}, triggerKey=${triggerKey}, vorherAktiv=${wasPreviouslyActive}, jetztAktiv=${isCurrentlyActive}`,
 			);
 
-			// Bedingung nicht erfüllt -> wieder scharf schalten
 			if (!isCurrentlyActive) {
 				if (wasPreviouslyActive) {
 					this.log.info(`Trigger ${id} (${triggerKey}) wurde zurückgesetzt und ist wieder scharf`);
@@ -1642,13 +1765,11 @@ class AlarmManager extends utils.Adapter {
 				continue;
 			}
 
-			// Bedingung ist weiterhin erfüllt -> nichts erneut senden
 			if (wasPreviouslyActive) {
 				this.log.debug(`Trigger ${id} (${triggerKey}) bleibt aktiv, kein erneuter Alarm`);
 				continue;
 			}
 
-			// Wechsel von "nicht erfüllt" auf "erfüllt"
 			this.triggerActiveStates[triggerKey] = true;
 			await this.enqueueAlarm(trigger, triggerKey, state);
 		}

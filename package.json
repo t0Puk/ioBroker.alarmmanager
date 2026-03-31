@@ -1,6 +1,6 @@
 {
   "name": "iobroker.alarmmanager",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Pager alarm system via e*Message API with escalation, acknowledgements and state-based triggers",
   "author": {
     "name": "TobiasP",

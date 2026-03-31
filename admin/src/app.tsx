@@ -38,6 +38,9 @@ type TriggerStateEntry = {
 	condition: TriggerCondition;
 	compareValue: string;
 	messageText: string;
+	timeRestrictionEnabled: boolean;
+	allowedFrom: string;
+	allowedTo: string;
 };
 
 type Config = {
@@ -156,6 +159,9 @@ function createTriggerState(): TriggerStateEntry {
 		condition: 'true',
 		compareValue: '',
 		messageText: '',
+		timeRestrictionEnabled: false,
+		allowedFrom: '06:00',
+		allowedTo: '22:00',
 	};
 }
 
@@ -326,6 +332,26 @@ function startSelectIdSanitizer(): () => void {
 	};
 }
 
+function isValidTimeString(value: string): boolean {
+	return /^([01]\d|2[0-3]):([0-5]\d)$/.test(String(value).trim());
+}
+
+function validateTriggerTimes(trigger: TriggerStateEntry): string | null {
+	if (!trigger.timeRestrictionEnabled) {
+		return null;
+	}
+
+	if (!isValidTimeString(trigger.allowedFrom)) {
+		return `Ungültige Startzeit bei Trigger "${trigger.stateId || trigger.id}": ${trigger.allowedFrom || '(leer)'}`;
+	}
+
+	if (!isValidTimeString(trigger.allowedTo)) {
+		return `Ungültige Endzeit bei Trigger "${trigger.stateId || trigger.id}": ${trigger.allowedTo || '(leer)'}`;
+	}
+
+	return null;
+}
+
 export default function App(): React.JSX.Element {
 	const [config, setConfig] = useState<Config>(DEFAULT_CONFIG);
 	const [status, setStatus] = useState<string>('UI geladen');
@@ -414,6 +440,9 @@ export default function App(): React.JSX.Element {
 								condition: item.condition ?? 'true',
 								compareValue: item.compareValue ?? '',
 								messageText: item.messageText ?? '',
+								timeRestrictionEnabled: Boolean(item.timeRestrictionEnabled ?? false),
+								allowedFrom: item.allowedFrom ?? '06:00',
+								allowedTo: item.allowedTo ?? '22:00',
 							}))
 						: [],
 				});
@@ -577,7 +606,24 @@ export default function App(): React.JSX.Element {
 		setCurrentSelectedId('');
 	}
 
+	function validateConfigForSave(): string | null {
+		for (const trigger of config.triggerStates) {
+			const error = validateTriggerTimes(trigger);
+			if (error) {
+				return error;
+			}
+		}
+		return null;
+	}
+
 	function save(closeAfterSave = false): void {
+		const validationError = validateConfigForSave();
+		if (validationError) {
+			setStatus(validationError);
+			setActiveTab('triggers');
+			return;
+		}
+
 		setIsSaving(true);
 		setStatus(`Speichere Konfiguration (${instanceId}) ...`);
 
@@ -622,6 +668,13 @@ export default function App(): React.JSX.Element {
 	}
 
 	function testCredentialsAndSave(): void {
+		const validationError = validateConfigForSave();
+		if (validationError) {
+			setStatus(validationError);
+			setActiveTab('triggers');
+			return;
+		}
+
 		setIsTestingCredentials(true);
 		setStatus('Prüfe Zugangsdaten und speichere ...');
 
@@ -1209,92 +1262,161 @@ export default function App(): React.JSX.Element {
 					</button>
 				</div>
 
-				{config.triggerStates.map((item, index) => (
-					<div
-						key={item.id}
-						style={cardStyle}
-					>
-						<h3 style={{ marginTop: 0 }}>Auslöser {index + 1}</h3>
+				{config.triggerStates.map((item, index) => {
+					const timeError = validateTriggerTimes(item);
 
-						<div style={rowStyle}>
-							<div>
-								<label style={labelStyle}>State-ID</label>
-								<div style={{ display: 'flex', gap: 8, alignItems: 'end' }}>
-									<input
+					return (
+						<div
+							key={item.id}
+							style={cardStyle}
+						>
+							<h3 style={{ marginTop: 0 }}>Auslöser {index + 1}</h3>
+
+							<div style={rowStyle}>
+								<div>
+									<label style={labelStyle}>State-ID</label>
+									<div style={{ display: 'flex', gap: 8, alignItems: 'end' }}>
+										<input
+											style={inputStyle}
+											value={item.stateId}
+											onChange={e => updateTriggerState(item.id, 'stateId', e.target.value)}
+										/>
+										<button
+											onClick={() =>
+												openObjectPicker({ type: 'trigger', id: item.id }, item.stateId)
+											}
+											style={smallButtonStyle}
+										>
+											Auswählen
+										</button>
+									</div>
+								</div>
+
+								<div>
+									<label style={labelStyle}>Aktiv</label>
+									<select
 										style={inputStyle}
-										value={item.stateId}
-										onChange={e => updateTriggerState(item.id, 'stateId', e.target.value)}
-									/>
-									<button
-										onClick={() => openObjectPicker({ type: 'trigger', id: item.id }, item.stateId)}
-										style={smallButtonStyle}
+										value={item.enabled ? 'true' : 'false'}
+										onChange={e =>
+											updateTriggerState(item.id, 'enabled', e.target.value === 'true')
+										}
 									>
-										Auswählen
-									</button>
+										<option value="true">Ja</option>
+										<option value="false">Nein</option>
+									</select>
 								</div>
 							</div>
 
-							<div>
-								<label style={labelStyle}>Aktiv</label>
-								<select
-									style={inputStyle}
-									value={item.enabled ? 'true' : 'false'}
-									onChange={e => updateTriggerState(item.id, 'enabled', e.target.value === 'true')}
-								>
-									<option value="true">Ja</option>
-									<option value="false">Nein</option>
-								</select>
-							</div>
-						</div>
+							<div style={rowStyle}>
+								<div>
+									<label style={labelStyle}>Bedingung</label>
+									<select
+										style={inputStyle}
+										value={item.condition}
+										onChange={e =>
+											updateTriggerState(item.id, 'condition', e.target.value as TriggerCondition)
+										}
+									>
+										<option value="true">true</option>
+										<option value="false">false</option>
+										<option value="=">Wert =</option>
+										<option value=">">Wert &gt;</option>
+										<option value="<">Wert &lt;</option>
+									</select>
+								</div>
 
-						<div style={rowStyle}>
-							<div>
-								<label style={labelStyle}>Bedingung</label>
-								<select
-									style={inputStyle}
-									value={item.condition}
-									onChange={e =>
-										updateTriggerState(item.id, 'condition', e.target.value as TriggerCondition)
-									}
-								>
-									<option value="true">true</option>
-									<option value="false">false</option>
-									<option value="=">Wert =</option>
-									<option value=">">Wert &gt;</option>
-									<option value="<">Wert &lt;</option>
-								</select>
+								<div>
+									<label style={labelStyle}>Vergleichswert</label>
+									<input
+										style={inputStyle}
+										value={item.compareValue}
+										onChange={e => updateTriggerState(item.id, 'compareValue', e.target.value)}
+										disabled={item.condition === 'true' || item.condition === 'false'}
+									/>
+								</div>
 							</div>
 
-							<div>
-								<label style={labelStyle}>Vergleichswert</label>
-								<input
-									style={inputStyle}
-									value={item.compareValue}
-									onChange={e => updateTriggerState(item.id, 'compareValue', e.target.value)}
-									disabled={item.condition === 'true' || item.condition === 'false'}
+							<div style={{ marginBottom: 16 }}>
+								<label style={labelStyle}>Nachrichtentext</label>
+								<textarea
+									style={{ ...inputStyle, minHeight: 90, border: '1px solid #bdbdbd' }}
+									value={item.messageText}
+									onChange={e => updateTriggerState(item.id, 'messageText', e.target.value)}
 								/>
 							</div>
-						</div>
 
-						<div style={{ marginBottom: 16 }}>
-							<label style={labelStyle}>Nachrichtentext</label>
-							<textarea
-								style={{ ...inputStyle, minHeight: 90, border: '1px solid #bdbdbd' }}
-								value={item.messageText}
-								onChange={e => updateTriggerState(item.id, 'messageText', e.target.value)}
-							/>
-						</div>
+							<div style={{ marginBottom: 16 }}>
+								<label style={labelStyle}>Zeitfenster aktiv</label>
+								<select
+									style={inputStyle}
+									value={item.timeRestrictionEnabled ? 'true' : 'false'}
+									onChange={e =>
+										updateTriggerState(item.id, 'timeRestrictionEnabled', e.target.value === 'true')
+									}
+								>
+									<option value="false">Nein</option>
+									<option value="true">Ja</option>
+								</select>
+								<div style={hintStyle}>
+									Wenn aktiv, löst dieser Trigger nur innerhalb des Zeitfensters aus.
+								</div>
+							</div>
 
-						<div>
-							<button
-								onClick={() => deleteTriggerState(item.id)}
-								style={smallButtonStyle}
-							>
-								Auslöser löschen
-							</button>
+							{item.timeRestrictionEnabled ? (
+								<div style={rowStyle}>
+									<div>
+										<label style={labelStyle}>Erlaubt von</label>
+										<input
+											style={inputStyle}
+											value={item.allowedFrom}
+											onChange={e => updateTriggerState(item.id, 'allowedFrom', e.target.value)}
+											placeholder="HH:mm"
+										/>
+										<div style={hintStyle}>Beispiel: 06:00</div>
+									</div>
+
+									<div>
+										<label style={labelStyle}>Erlaubt bis</label>
+										<input
+											style={inputStyle}
+											value={item.allowedTo}
+											onChange={e => updateTriggerState(item.id, 'allowedTo', e.target.value)}
+											placeholder="HH:mm"
+										/>
+										<div style={hintStyle}>
+											Beispiel: 22:00. Nachtfenster wie 22:00 bis 06:00 sind möglich.
+										</div>
+									</div>
+								</div>
+							) : null}
+
+							{timeError ? (
+								<div
+									style={{
+										marginBottom: 16,
+										padding: 10,
+										background: '#ffebee',
+										border: '1px solid #ef9a9a',
+										borderRadius: 4,
+										color: '#b71c1c',
+										fontSize: 13,
+									}}
+								>
+									{timeError}
+								</div>
+							) : null}
+
+							<div>
+								<button
+									onClick={() => deleteTriggerState(item.id)}
+									style={smallButtonStyle}
+								>
+									Auslöser löschen
+								</button>
+							</div>
 						</div>
-					</div>
-				))}
+					);
+				})}
 			</>
 		);
 	}
