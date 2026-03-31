@@ -105,9 +105,6 @@ Mögliche Aktionen:
 Repository:  
 `https://github.com/t0Puk/ioBroker.alarmmanager`
 
-Testinstallation:
-```bash
-iobroker url https://github.com/t0Puk/ioBroker.alarmmanager/tarball/main --host this
 
 ## Changelog
 
